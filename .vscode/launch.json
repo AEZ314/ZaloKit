@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "UI",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/app",
+      "sourceMaps": true,
+      "runtimeExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    },
+    {
+      "command": "npm run dev app",
+      "name": "Server",
+      "request": "launch",
+      "type": "node-terminal"
+    }
+  ]
+}

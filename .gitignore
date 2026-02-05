@@ -1,0 +1,32 @@
+# Output
+app/node_modules/
+app/build/
+app/.svelte-kit/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.development
+.env.*.local
+*.env.local
+!.env.example
+!.env.test
+
+# Compose
+compose.yml
+docker-compose.*.local
+docker-compose.local.*
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Paraglide
+src/lib/paraglide
+project.inlang/cache/
+
+# Sentry Config File
+.env.sentry-build-plugin

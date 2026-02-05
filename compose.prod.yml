@@ -1,0 +1,92 @@
+services:
+  svelte:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+      args:
+        # Place variables that are needed at build time here.
+        DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "${SVELTE_HOST_PORT:-3070}:3000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT}
+      PUBLIC_DYNAMIC_MESSAGE: ${PUBLIC_DYNAMIC_MESSAGE}
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    expose:
+      - 5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    expose:
+      - 9090
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - svelte
+
+  tempo:
+    image: grafana/tempo:2.10.0
+    command: [ "-config.file=/etc/tempo.yml" ]
+    expose:
+      - 3200 # Tempo query/API
+    volumes:
+      - ./config/tempo.yml:/etc/tempo.yml:ro
+
+  loki:
+    image: grafana/loki:3.0.0
+    command: -config.file=/etc/loki/config.yml
+    expose:
+      - 3100
+    volumes:
+      - ./config/loki.yml:/etc/loki/config.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    ports:
+      - "${GRAFANA_PORT:-4000}:3000"
+    environment:
+      - ${GF_SMTP_ENABLED:-"true"}
+      - ${GF_SMTP_HOST:-"smtp.gmail.com:587"}
+      - ${GF_SMTP_USER:-"insert email"}
+      - ${GF_SMTP_FROM_ADDRESS:-"insert email"}
+      - ${GF_SMTP_FROM_NAME:-"Grafana"}
+      - ${GF_SMTP_PASSWORD:-"insert gmail app password"}
+    depends_on:
+      - loki
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+
+  alloy:
+    image: grafana/alloy:latest
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    expose:
+      - 12345 # Alloy server
+      - 4318 # OTLP/HTTP receiver
+    volumes:
+      - ./config/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+
+volumes:
+  grafana-data:
+  pgdata:
