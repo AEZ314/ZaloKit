@@ -1,4 +1,5 @@
 # ZaloKit
+![Alt](https://repobeats.axiom.co/api/embed/edc1ac68b4ce893e99836f78a348139c10f96b67.svg "Repobeats analytics image")
 
 ⚠️⚠️⚠️  
 Hey all! The template is pre-production, but hang tight while I'm preparing to ship the first usable version in a few weeks. If you're tempted, feel free to share your thoughts!  
