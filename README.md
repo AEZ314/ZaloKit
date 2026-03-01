@@ -1,4 +1,5 @@
 # ZaloKit
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/AEZ314/ZaloKit)
 ![Alt](https://repobeats.axiom.co/api/embed/edc1ac68b4ce893e99836f78a348139c10f96b67.svg "Repobeats analytics image")
 
 ⚠️⚠️⚠️  
