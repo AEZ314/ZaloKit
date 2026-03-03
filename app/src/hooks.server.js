@@ -1,13 +1,35 @@
+import pinoHttp from 'pino-http';
+import { logger } from '$lib/server/logger';
+
 import { sequence } from '@sveltejs/kit/hooks';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { auth } from '$lib/server/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
-import { logger } from '$lib/server/logger';
 import { httpDuration, httpRequests } from '$lib/server/metrics';
 import cron from 'node-cron';
 import webpush from 'web-push';
 import { RetryAfterRateLimiter } from 'sveltekit-rate-limiter/server';
+
+export const handleError = ({ error, event }) => {
+	logger.error(
+		{
+			err: error,
+			url: event.url.pathname,
+			method: event.request.method
+		},
+		'Unhandled server error'
+	);
+
+	return {
+		message: 'Internal error'
+	};
+};
+
+const httpLogger = pinoHttp({
+	logger,
+	autoLogging: true
+});
 
 // This is a global limiter, but can limit individual +page.server.js files as well
 const limiter = new RetryAfterRateLimiter({
@@ -44,6 +66,10 @@ const handleParaglide = ({ event, resolve }) =>
 	});
 
 export async function handle({ event, resolve }) {
+	const req = event.platform?.req;
+	const res = event.platform?.res;
+	if (req && res) httpLogger(req, res);
+
 	const status = await limiter.check(event);
 	if (status.limited) {
 		let response = new Response(

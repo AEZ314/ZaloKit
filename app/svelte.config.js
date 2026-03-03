@@ -13,7 +13,9 @@ const config = {
 	],
 	kit: {
 		adapter: adapter(),
-
+		alias: {
+			$schema: './schemas/index.js'
+		},
 		experimental: {
 			tracing: {
 				server: true
