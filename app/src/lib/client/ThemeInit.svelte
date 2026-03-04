@@ -1,3 +1,12 @@
+<script>
+	import { theme } from '$lib/client/theme';
+
+	$effect(() => {
+		document.documentElement.classList.remove('light', 'dark', 'soft');
+		document.documentElement.classList.add(theme.current);
+	});
+</script>
+
 <svelte:head>
 	<script>
 		(function () {
