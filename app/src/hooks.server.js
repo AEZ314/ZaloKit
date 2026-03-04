@@ -1,4 +1,3 @@
-import pinoHttp from 'pino-http';
 import { logger } from '$lib/server/logger';
 
 import { sequence } from '@sveltejs/kit/hooks';
@@ -10,26 +9,19 @@ import { httpDuration, httpRequests } from '$lib/server/metrics';
 import cron from 'node-cron';
 import webpush from 'web-push';
 import { RetryAfterRateLimiter } from 'sveltekit-rate-limiter/server';
+import { posthog } from '$lib/server/posthog';
+import path from 'path';
 
-export const handleError = ({ error, event }) => {
-	logger.error(
-		{
-			err: error,
-			url: event.url.pathname,
-			method: event.request.method
-		},
-		'Unhandled server error'
-	);
-
-	return {
-		message: 'Internal error'
-	};
-};
-
-const httpLogger = pinoHttp({
-	logger,
-	autoLogging: true
-});
+// should we guard for exceptions here?
+cron.schedule(
+	'* * * * *',
+	async () => {
+		// console.log('Runs every minute');
+	},
+	{
+		timezone: 'UTC'
+	}
+);
 
 // This is a global limiter, but can limit individual +page.server.js files as well
 const limiter = new RetryAfterRateLimiter({
@@ -45,17 +37,6 @@ webpush.setVapidDetails(
 	process.env.PRIVATE_VAPID_KEY
 );
 
-// should we guard for exceptions here?
-cron.schedule(
-	'* * * * *',
-	async () => {
-		console.log('Runs every minute');
-	},
-	{
-		timezone: 'UTC'
-	}
-);
-
 const handleParaglide = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
 		event.request = request;
@@ -65,11 +46,33 @@ const handleParaglide = ({ event, resolve }) =>
 		});
 	});
 
-export async function handle({ event, resolve }) {
-	const req = event.platform?.req;
-	const res = event.platform?.res;
-	if (req && res) httpLogger(req, res);
+// Section: SvelteKit Handlers
 
+export const handleError = ({ error, event }) => {
+	let ignore = false;
+	if (event.url.pathname.endsWith('.map')) ignore = true; // ignore source map errors
+
+	if (!ignore)
+		logger.error(
+			{
+				method: event.request.method,
+				url: event.url.pathname,
+				message: error.message,
+				user: event.locals?.user?.id ?? null
+			},
+			'Unhandled server error'
+		);
+
+	// Sanitized error for client
+	return {
+		message: 'Internal error'
+	};
+};
+
+export async function handle({ event, resolve }) {
+	const start = performance.now();
+
+	// rate limit check
 	const status = await limiter.check(event);
 	if (status.limited) {
 		let response = new Response(
@@ -93,5 +96,47 @@ export async function handle({ event, resolve }) {
 		event.locals.user = session.user;
 	}
 
-	return svelteKitHandler({ event, resolve, auth, building });
+	// Handle request
+	const response = await svelteKitHandler({ event, resolve, auth, building });
+
+	const ms = performance.now() - start;
+
+	// Skip logging for certain requests (e.g. source map errors)
+	let ignore = false;
+	if (event.url.pathname.endsWith('.map')) ignore = true; // ignore source map errors
+
+	if (ignore) return response;
+
+	// LOGGING
+
+	// metrics
+	const route = event.route?.id ?? event.url.pathname; // route paramerizes slugs/query strings hence fewer labels for Prometheus
+	const labels = [event.request.method, route, String(response.status)];
+	httpDuration.labels(...labels).observe(ms / 1000);
+	httpRequests.labels(...labels).inc(1);
+
+	// pino
+	logger.debug(
+		{
+			method: event.request.method,
+			path: event.url.pathname,
+			status: response.status,
+			ms: Math.round(ms)
+		},
+		'request'
+	);
+
+	// posthog analytics
+	posthog.capture({
+		distinctId: event.locals?.user?.id ?? 'anonymous',
+		event: 'request',
+		properties: {
+			method: event.request.method,
+			route,
+			status: response.status,
+			ms
+		}
+	});
+
+	return response;
 }

@@ -17,6 +17,7 @@ function otelIds() {
 export const logger = pino({
 	name: 'svelte',
 	base: undefined, // don’t add pid/hostname unless you want them
+	level: process.env.LOG_LEVEL ?? (dev ? 'debug' : 'info'),
 	transport: dev
 		? {
 				target: 'pino-pretty',
