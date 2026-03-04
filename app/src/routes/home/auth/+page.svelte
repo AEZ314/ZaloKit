@@ -7,7 +7,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import bg from '$lib/images/bg.jpg';
 	import { onMount } from 'svelte';
-	import { authClient } from '$lib/auth-client';
+	import { authClient } from '$lib/client/auth-client';
 	import z from 'zod';
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/validators';
