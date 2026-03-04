@@ -3,11 +3,10 @@
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import { initPostHog } from '$lib/posthog';
-	import { ModeWatcher } from 'mode-watcher'; // shadcn UI component for theme detection
+	import { initPostHog } from '$lib/client/posthog';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
+	import ThemeInit from '$lib/client/ThemeInit.svelte';
 
-	/** @type {{children: import('svelte').Snippet}} */
 	let { children } = $props();
 
 	onMount(() => {
@@ -15,7 +14,7 @@
 	});
 </script>
 
-<ModeWatcher />
+<ThemeInit />
 <Toaster />
 
 <div class="app">

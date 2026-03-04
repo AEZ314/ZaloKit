@@ -1,7 +1,7 @@
 <script>
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Menubar from '$lib/components/ui/menubar/index.js';
-	import { authClient } from '$lib/auth-client';
+	import { authClient } from '$lib/client/auth-client';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -131,7 +131,7 @@
 		blob = await compressImage(blob);
 
 		try {
-			const r1 = await fetch(`/s3/avatar/${$session.data?.user?.id}`, {
+			const r1 = await fetch(`/s3/user/avatar/${$session.data?.user?.id}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -368,7 +368,9 @@
 			<Dialog.Root bind:open={profilePicDialogOpen}>
 				<Dialog.Trigger>
 					<Avatar.Root class="size-14 cursor-pointer rounded-lg">
-						<Avatar.Image src={'/s3/avatar/' + $session.data?.user?.id} />
+						{#if $session.data?.user?.id}
+							<Avatar.Image src={'/s3/user/avatar/' + $session.data?.user?.id} />
+						{/if}
 						<Avatar.Fallback class="rounded-lg"
 							>{getInitials($session.data?.user?.name ?? 'User Name')}</Avatar.Fallback
 						>

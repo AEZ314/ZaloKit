@@ -6,7 +6,7 @@
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 
-	import { authClient } from '$lib/auth-client';
+	import { authClient } from '$lib/client/auth-client';
 	import { toast } from 'svelte-sonner';
 	import { getInitials } from '$lib/utils.js';
 
@@ -38,17 +38,18 @@
 						size="lg"
 						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 					>
-						<div
-							class="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"
-						>
-							🔥
-							<!-- <activeTeam.logo class="size-4" /> -->
-						</div>
+						<Avatar.Root class="size-8 rounded-lg">
+							<Avatar.Image src={'/s3/organization/avatar/' + activeTeam?.id} />
+							<Avatar.Fallback class="rounded-lg"
+								>{getInitials(activeTeam?.name ?? 'Work Space')}</Avatar.Fallback
+							>
+						</Avatar.Root>
+
 						<div class="grid flex-1 text-start text-sm leading-tight">
 							<span class="truncate font-medium">
-								{activeTeam.name}
+								{activeTeam?.name ?? 'Workspace'}
 							</span>
-							<span class="truncate text-xs">{activeTeam.plan}</span>
+							<span class="truncate text-xs">{activeTeam?.plan ?? 'No workspace'}</span>
 						</div>
 						<ChevronsUpDownIcon class="ms-auto" />
 					</Sidebar.MenuButton>
@@ -71,7 +72,7 @@
 					{#each $organizations.data as space, index (space.name)}
 						<DropdownMenu.Item class="gap-2 p-2" onSelect={() => setActiveOrganization(space)}>
 							<Avatar.Root class="size-8 rounded-lg">
-								<Avatar.Image src={'/s3/avatar/organization/' + space.id} />
+								<Avatar.Image src={'/s3/organization/avatar/' + space.id} />
 								<Avatar.Fallback class="rounded-lg"
 									>{getInitials(space.name ?? 'Work Space')}</Avatar.Fallback
 								>

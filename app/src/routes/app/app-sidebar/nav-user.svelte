@@ -7,7 +7,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js';
-	import { authClient } from '$lib/auth-client';
+	import { authClient } from '$lib/client/auth-client';
 	import { goto } from '$app/navigation';
 	import { getInitials } from '$lib/utils.js';
 
@@ -41,7 +41,9 @@
 						{...props}
 					>
 						<Avatar.Root class="size-8 rounded-lg">
-							<Avatar.Image src={'/s3/avatar/' + $session.data?.user?.id} />
+							{#if $session.data?.user?.id}
+								<Avatar.Image src={'/s3/user/avatar/' + $session.data?.user?.id} />
+							{/if}
 							<Avatar.Fallback class="rounded-lg"
 								>{getInitials($session.data?.user?.name ?? 'User Name')}</Avatar.Fallback
 							>
@@ -65,7 +67,9 @@
 				<DropdownMenu.Label class="p-0 font-normal">
 					<div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
 						<Avatar.Root class="size-8 rounded-lg">
-							<Avatar.Image src={'/s3/avatar/' + $session.data?.user?.id} />
+							{#if $session.data?.user?.id}
+								<Avatar.Image src={'/s3/user/avatar/' + $session.data?.user?.id} />
+							{/if}
 							<Avatar.Fallback class="rounded-lg"
 								>{getInitials($session.data?.user?.name ?? 'User Name')}</Avatar.Fallback
 							>

@@ -1,7 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { emailOTP, organization, phoneNumber, admin, apiKey } from 'better-auth/plugins';
+import { emailOTP, organization, phoneNumber, admin, apiKey, openAPI } from 'better-auth/plugins';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { passkey } from '@better-auth/passkey';
 import { stripe } from '@better-auth/stripe';
@@ -12,6 +12,7 @@ import { PUBLIC_BASE_URL } from '$env/dynamic/public';
 import { db } from '$lib/server/db';
 import { userCreated } from './app/user-lifecycle';
 import { firstName } from '$lib/utils.js';
+import { dash } from '@better-auth/infra';
 
 // When running npm run auth:generate. .svelte import (in mail.js) breaks better-auth codegen otherwise.
 let sendVerificationEmail;
@@ -137,6 +138,8 @@ export const auth = betterAuth({
 		}
 	},
 	plugins: [
+		//dash(),
+		openAPI(),
 		stripe({
 			stripeClient,
 			stripeWebhookSecret: 'process.env.STRIPE_WEBHOOK_SECRET',
