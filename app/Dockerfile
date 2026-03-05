@@ -24,9 +24,10 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/drizzle.config.js ./
+COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/schemas ./schemas
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD curl -fsS http://localhost:3000/health || exit 1
 
-CMD ["node", "build/index.js"]
+CMD ["sh", "-lc", "npm run db:migrate && node build/index.js"]

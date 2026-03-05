@@ -6,22 +6,11 @@ import { auth } from '$lib/server/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 import { httpDuration, httpRequests } from '$lib/server/metrics';
-import cron from 'node-cron';
-import webpush from 'web-push';
 import { RetryAfterRateLimiter } from 'sveltekit-rate-limiter/server';
 import { posthog } from '$lib/server/posthog';
 import path from 'path';
 
-// should we guard for exceptions here?
-cron.schedule(
-	'* * * * *',
-	async () => {
-		// console.log('Runs every minute');
-	},
-	{
-		timezone: 'UTC'
-	}
-);
+import './init-server.js';
 
 // This is a global limiter, but can limit individual +page.server.js files as well
 const limiter = new RetryAfterRateLimiter({
@@ -30,12 +19,6 @@ const limiter = new RetryAfterRateLimiter({
 		[10, 's']
 	]
 });
-
-webpush.setVapidDetails(
-	`mailto:${process.env.PUBLIC_SUPPORT_EMAIL}`,
-	process.env.PUBLIC_VAPID_KEY,
-	process.env.PRIVATE_VAPID_KEY
-);
 
 const handleParaglide = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
