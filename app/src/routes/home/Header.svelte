@@ -11,8 +11,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { authClient } from '$lib/client/auth-client';
 	import Theme from '../ThemeToggle.svelte';
-
-	const session = authClient.useSession();
+	import { user } from '$lib/client/state.svelte.js';
 
 	let mobileOpen = $state(false);
 	let resourcesOpen = $state(false);
@@ -117,7 +116,7 @@
 			</div>
 
 			<div class="hidden items-center gap-4 md:flex">
-				{#if $session.data}
+				{#if user.current}
 					<a
 						href="/app"
 						class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"

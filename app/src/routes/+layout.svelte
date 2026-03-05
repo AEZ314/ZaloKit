@@ -1,11 +1,14 @@
 <script>
-	import { page } from '$app/state';
+	import { page } from '$app/stores';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import '../app.css';
 	import { onMount } from 'svelte';
 	import { initPostHog } from '$lib/client/posthog';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import ThemeInit from '$lib/client/ThemeInit.svelte';
+
+	import { user } from '$lib/client/state.svelte.js';
+	user.current = $page.data.user;
 
 	let { children } = $props();
 

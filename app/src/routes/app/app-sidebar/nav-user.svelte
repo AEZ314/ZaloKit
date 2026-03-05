@@ -7,6 +7,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js';
+	import { invalidate } from '$app/navigation';
 	import { authClient } from '$lib/client/auth-client';
 	import { goto } from '$app/navigation';
 	import { getInitials } from '$lib/utils.js';
@@ -18,15 +19,14 @@
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
-
-	const session = authClient.useSession();
+	import { user } from '$lib/client/state.svelte.js';
 
 	const sidebar = useSidebar();
 	let signOutDialogOpen = false;
 
 	async function signOut() {
 		await authClient.signOut();
-		goto('/home/auth?mode=login');
+		await invalidate('app:auth');
 	}
 </script>
 
@@ -41,18 +41,16 @@
 						{...props}
 					>
 						<Avatar.Root class="size-8 rounded-lg">
-							{#if $session.data?.user?.id}
-								<Avatar.Image src={'/s3/user/avatar/' + $session.data?.user?.id} />
+							{#if user.current.id}
+								<Avatar.Image src={'/s3/user/avatar/' + user.current.id} />
 							{/if}
 							<Avatar.Fallback class="rounded-lg"
-								>{getInitials($session.data?.user?.name ?? 'User Name')}</Avatar.Fallback
+								>{getInitials(user.current.name ?? 'User Name')}</Avatar.Fallback
 							>
 						</Avatar.Root>
 						<div class="grid flex-1 text-start text-sm leading-tight">
-							<span class="truncate font-medium">{$session.data?.user?.name ?? 'User Name'}</span>
-							<span class="truncate text-xs"
-								>{$session.data?.user?.email ?? 'user@example.com'}</span
-							>
+							<span class="truncate font-medium">{user.current.name ?? 'User Name'}</span>
+							<span class="truncate text-xs">{user.current.email ?? 'user@example.com'}</span>
 						</div>
 						<ChevronsUpDownIcon class="ms-auto size-4" />
 					</Sidebar.MenuButton>
@@ -67,18 +65,16 @@
 				<DropdownMenu.Label class="p-0 font-normal">
 					<div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
 						<Avatar.Root class="size-8 rounded-lg">
-							{#if $session.data?.user?.id}
-								<Avatar.Image src={'/s3/user/avatar/' + $session.data?.user?.id} />
+							{#if user.current.id}
+								<Avatar.Image src={'/s3/user/avatar/' + user.current.id} />
 							{/if}
 							<Avatar.Fallback class="rounded-lg"
-								>{getInitials($session.data?.user?.name ?? 'User Name')}</Avatar.Fallback
+								>{getInitials(user.current.name ?? 'User Name')}</Avatar.Fallback
 							>
 						</Avatar.Root>
 						<div class="grid flex-1 text-start text-sm leading-tight">
-							<span class="truncate font-medium">{$session.data?.user?.name ?? 'User Name'}</span>
-							<span class="truncate text-xs"
-								>{$session.data?.user?.email ?? 'user@example.com'}</span
-							>
+							<span class="truncate font-medium">{user.current.name ?? 'User Name'}</span>
+							<span class="truncate text-xs">{user.current.email ?? 'user@example.com'}</span>
 						</div>
 					</div>
 				</DropdownMenu.Label>

@@ -14,6 +14,7 @@
 	import { toast } from 'svelte-sonner';
 	import { page } from '$app/stores';
 	import { form } from '$app/server';
+	import { user } from '$lib/client/state.svelte.js';
 
 	const passwordResetSchema = z
 		.object({
@@ -29,8 +30,6 @@
 				});
 			}
 		});
-
-	const session = authClient.useSession();
 
 	let redirect = $page.url.searchParams.get('redirect');
 	if (!redirect || !redirect.startsWith('/')) {
@@ -71,10 +70,6 @@
 	});
 	$effect(async () => {
 		if (otpPasswordResetCode.length === 6) await otpRecoverHandle();
-	});
-
-	$effect(() => {
-		if ($session.data) goto(redirect);
 	});
 
 	async function validateRegister() {
@@ -220,6 +215,10 @@
 			provider: 'google'
 		});
 	}
+
+	onMount(async () => {
+		if (user.current) goto(redirect);
+	});
 </script>
 
 <div class="fixed inset-0 -z-10">

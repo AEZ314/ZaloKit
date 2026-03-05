@@ -8,6 +8,7 @@
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import Check from '@lucide/svelte/icons/check';
 	import CheckCheck from '@lucide/svelte/icons/check-check';
+	import Atom from '@lucide/svelte/icons/atom';
 	import Users from '@lucide/svelte/icons/users';
 	import CircleQuestionMark from '@lucide/svelte/icons/circle-question-mark';
 </script>
@@ -25,7 +26,7 @@
 						<Tooltip.Root>
 							<Tooltip.Trigger>
 								{#snippet child({ props })}
-								<CircleQuestionMark class="ml-auto text-muted-foreground" {...props}/>
+									<CircleQuestionMark class="ml-auto text-muted-foreground" {...props} />
 								{/snippet}
 							</Tooltip.Trigger>
 							<Tooltip.Content>View your dashboard.</Tooltip.Content>
@@ -63,9 +64,9 @@
 					<Collapsible.Trigger>
 						{#snippet child({ props })}
 							<Sidebar.MenuButton {...props}>
-								<Users />
+								<Atom />
 
-								<span>Team</span>
+								<span>Workspace</span>
 								<ChevronRightIcon
 									class="ms-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
 								/>
@@ -77,8 +78,8 @@
 							<Sidebar.MenuSubItem>
 								<Sidebar.MenuSubButton>
 									{#snippet child({ props })}
-										<a href="/app/team#members" {...props}>
-											<span>Members</span>
+										<a href="/app/workspace#members" {...props}>
+											<span>People</span>
 										</a>
 									{/snippet}
 								</Sidebar.MenuSubButton>
@@ -87,7 +88,7 @@
 							<Sidebar.MenuSubItem>
 								<Sidebar.MenuSubButton>
 									{#snippet child({ props })}
-										<a href="/app/team#settings" {...props}>
+										<a href="/app/workspace#settings" {...props}>
 											<span>Settings</span>
 										</a>
 									{/snippet}

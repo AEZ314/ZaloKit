@@ -6,7 +6,6 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { onMount } from 'svelte';
 
-	/** @type {{children: import('svelte').Snippet}} */
 	let { children } = $props();
 </script>
 

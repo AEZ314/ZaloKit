@@ -18,13 +18,14 @@
 	import imageCompression from 'browser-image-compression';
 
 	import { getInitials } from '$lib/utils.js';
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import z from 'zod';
 	import { account } from '$lib/validators';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { env } from '$env/dynamic/public';
 	import { resetPassword } from 'better-auth/api';
+	import { user } from '$lib/client/state.svelte.js';
 
 	const passwordResetSchema = z
 		.object({
@@ -40,18 +41,6 @@
 				});
 			}
 		});
-
-	const session = authClient.useSession();
-	let sessionLoaded = false;
-	$effect(() => {
-		if ($session.data && !sessionLoaded) {
-			accountForm = {
-				name: $session.data.user.name,
-				email: $session.data.user.email
-			};
-			sessionLoaded = true;
-		}
-	});
 
 	// profile picture logic //
 
@@ -131,7 +120,7 @@
 		blob = await compressImage(blob);
 
 		try {
-			const r1 = await fetch(`/s3/user/avatar/${$session.data?.user?.id}`, {
+			const r1 = await fetch(`/s3/user/avatar/${user.current.id}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -252,7 +241,7 @@
 
 	async function otpRecoverSend() {
 		await authClient.emailOtp.sendVerificationOtp({
-			email: $session.data.user.email,
+			email: user.current.email,
 			type: 'forget-password'
 		});
 		toast.info('Verification code sent');
@@ -260,7 +249,7 @@
 
 	async function otpRecoverHandle() {
 		const { data, error } = await authClient.emailOtp.checkVerificationOtp({
-			email: $session.data.user.email,
+			email: user.current.email,
 			type: 'forget-password',
 			otp: otpPasswordResetCode
 		});
@@ -286,7 +275,7 @@
 		}
 
 		const { data, error } = await authClient.emailOtp.resetPassword({
-			email: $session.data.user.email,
+			email: user.current.email,
 			otp: otpPasswordResetCode,
 			password: passwordResetForm.password
 		});
@@ -314,6 +303,7 @@
 			return;
 		}
 
+		await invalidate('app:auth');
 		goto('/');
 	}
 
@@ -345,6 +335,11 @@
 	let linkedAccounts = $state([]);
 
 	onMount(async () => {
+		accountForm = {
+			name: user.current.name,
+			email: user.current.email
+		};
+
 		const r = await authClient.listAccounts();
 		if (!r.error && r.data?.length > 0)
 			linkedAccounts = r.data.filter((x) => x.providerId !== 'credentials');
@@ -368,11 +363,11 @@
 			<Dialog.Root bind:open={profilePicDialogOpen}>
 				<Dialog.Trigger>
 					<Avatar.Root class="size-14 cursor-pointer rounded-lg">
-						{#if $session.data?.user?.id}
-							<Avatar.Image src={'/s3/user/avatar/' + $session.data?.user?.id} />
+						{#if user.current.id}
+							<Avatar.Image src={'/s3/user/avatar/' + user.current.id} />
 						{/if}
 						<Avatar.Fallback class="rounded-lg"
-							>{getInitials($session.data?.user?.name ?? 'User Name')}</Avatar.Fallback
+							>{getInitials(user.current.name ?? 'User Name')}</Avatar.Fallback
 						>
 					</Avatar.Root>
 					<CirclePlus class="absolute -top-3 -right-3 cursor-pointer shadow" size="16" />

@@ -49,7 +49,7 @@
 							<span class="truncate font-medium">
 								{activeTeam?.name ?? 'Workspace'}
 							</span>
-							<span class="truncate text-xs">{activeTeam?.plan ?? 'No workspace'}</span>
+							<span class="truncate text-xs">{activeTeam?.plan ?? 'free tier'}</span>
 						</div>
 						<ChevronsUpDownIcon class="ms-auto" />
 					</Sidebar.MenuButton>
@@ -69,15 +69,15 @@
 				{:else if !$organizations.data?.length}
 					<p>No organizations found.</p>
 				{:else}
-					{#each $organizations.data as space, index (space.name)}
-						<DropdownMenu.Item class="gap-2 p-2" onSelect={() => setActiveOrganization(space)}>
+					{#each $organizations.data as org, index (org.name)}
+						<DropdownMenu.Item class="gap-2 p-2" onSelect={() => setActiveOrganization(org)}>
 							<Avatar.Root class="size-8 rounded-lg">
-								<Avatar.Image src={'/s3/organization/avatar/' + space.id} />
+								<Avatar.Image src={'/s3/organization/avatar/' + org.id} />
 								<Avatar.Fallback class="rounded-lg"
-									>{getInitials(space.name ?? 'Work Space')}</Avatar.Fallback
+									>{getInitials(org.name ?? 'Work Space')}</Avatar.Fallback
 								>
 							</Avatar.Root>
-							{space.name}
+							{org.name}
 						</DropdownMenu.Item>
 					{/each}
 				{/if}
