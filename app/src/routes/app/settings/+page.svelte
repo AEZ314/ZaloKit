@@ -7,9 +7,11 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import * as InputOTP from '$lib/components/ui/input-otp/index.js';
+	import * as Card from '$lib/components/ui/card/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
+	import * as Item from '$lib/components/ui/item/index.js';
 	import CirclePlus from '@lucide/svelte/icons/circle-plus';
 	import { fly } from 'svelte/transition';
 
@@ -26,6 +28,12 @@
 	import { env } from '$env/dynamic/public';
 	import { resetPassword } from 'better-auth/api';
 	import { user } from '$lib/client/state.svelte.js';
+
+	const flyDown = {
+		y: -10,
+		duration: 400,
+		opacity: 0
+	};
 
 	const passwordResetSchema = z
 		.object({
@@ -356,280 +364,387 @@
 	onchange={onProfilePictureChange}
 />
 
-<main class="container flex flex-col items-start justify-start gap-6 p-6">
-	<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="account">Account</h3>
-	<div class="flex w-full flex-col gap-2">
-		<div class="relative w-fit">
-			<Dialog.Root bind:open={profilePicDialogOpen}>
-				<Dialog.Trigger>
-					<Avatar.Root class="size-14 cursor-pointer rounded-lg">
-						{#if user.current.id}
-							<Avatar.Image src={'/s3/user/avatar/' + user.current.id} />
+<main class="container flex flex-col items-center gap-6 p-6">
+	<Card.Root class="my-4 w-full max-w-xl">
+		<Card.Content class="flex flex-col gap-3">
+			<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="account">Account</h3>
+			<Separator class="mt-0 mb-4" />
+
+			<div class="flex gap-4">
+				<div class="relative w-fit">
+					<Dialog.Root bind:open={profilePicDialogOpen}>
+						<Dialog.Trigger>
+							<Avatar.Root class="size-40 cursor-pointer rounded-lg">
+								{#if user.current.id}
+									<Avatar.Image src={'/s3/user/avatar/' + user.current.id} />
+								{/if}
+								<Avatar.Fallback class="rounded-lg"
+									>{getInitials(user.current.name ?? 'User Name')}</Avatar.Fallback
+								>
+							</Avatar.Root>
+							<div
+								class="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-md bg-background"
+							>
+								<CirclePlus class="cursor-pointer shadow" size="16" />
+							</div>
+						</Dialog.Trigger>
+						<Dialog.Content>
+							<Dialog.Header>
+								<Dialog.Title>Upload Profile Picture</Dialog.Title>
+								<Dialog.Description>
+									<div bind:this={wrapperEl} class="w-full">
+										<div bind:this={croppieEl}></div>
+									</div>
+								</Dialog.Description>
+							</Dialog.Header>
+							<Dialog.Footer class="sm:justify-start">
+								<Dialog.Close class={buttonVariants({ variant: 'ghost' })}>Cancel</Dialog.Close>
+								<Button class="ml-auto" onclick={() => fileInputEl.click()}>Select Picture</Button>
+								<Button variant="secondary" disabled={!file} onclick={uploadProfilePicture}
+									>Continue</Button
+								>
+							</Dialog.Footer>
+						</Dialog.Content>
+					</Dialog.Root>
+				</div>
+
+				<div class="flex flex-1 flex-col">
+					<Label>Name</Label>
+					<Input
+						bind:value={accountForm.name}
+						oninput={() => validateAccount('name')}
+						type="text"
+						class="mt-1.5"
+					/>
+					<div class="relative mt-1.5">
+						{#if accountError?.fieldErrors?.name && accountForm.name.length > 0}
+							<div transition:fly={flyDown}>
+								<Label class="absolute text-red-500">
+									{accountError?.fieldErrors?.name}
+								</Label>
+							</div>
 						{/if}
-						<Avatar.Fallback class="rounded-lg"
-							>{getInitials(user.current.name ?? 'User Name')}</Avatar.Fallback
-						>
-					</Avatar.Root>
-					<CirclePlus class="absolute -top-3 -right-3 cursor-pointer shadow" size="16" />
+					</div>
+
+					<Label class="mt-6">Email</Label>
+					<Input
+						bind:value={accountForm.email}
+						oninput={() => validateAccount('email')}
+						type="email"
+						class="mt-1.5"
+					/>
+					<div class="relative mt-1.5">
+						{#if accountError?.fieldErrors?.email && accountForm.email.length > 0}
+							<div transition:fly={flyDown}>
+								<Label class="absolute text-red-500">
+									{accountError?.fieldErrors?.email}
+								</Label>
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+
+			<div class="w-full">
+				<div class="flex flex-1">
+					<Label>Set New Password</Label>
+					<div class="ml-auto">
+						<Dialog.Root bind:open={passwordResetOpen}>
+							<Dialog.Trigger>
+								<Button variant="ghost" class="mb-0 h-0 text-muted-foreground" size="sm"
+									>Forgot password?</Button
+								>
+							</Dialog.Trigger>
+							<Dialog.Content>
+								<Dialog.Header>
+									<Dialog.Title>Reset Password</Dialog.Title>
+									<Dialog.Description>
+										{#if passwordResetState === 'otp'}
+											<div class="flex flex-col items-center gap-6">
+												<div class="grid justify-items-center gap-2">
+													<InputOTP.Root maxlength={6} bind:value={otpPasswordResetCode}>
+														{#snippet children({ cells })}
+															<InputOTP.Group>
+																{#each cells.slice(0, 3) as cell}
+																	<InputOTP.Slot {cell} />
+																{/each}
+															</InputOTP.Group>
+															<InputOTP.Separator />
+															<InputOTP.Group>
+																{#each cells.slice(3, 6) as cell}
+																	<InputOTP.Slot {cell} />
+																{/each}
+															</InputOTP.Group>
+														{/snippet}
+													</InputOTP.Root>
+
+													{#if otpError.message?.length > 0}
+														<Label class="text-red-500">
+															{otpError.message}
+														</Label>
+													{/if}
+
+													{#if !otpSent}
+														<Button class="w-full" variant="ghost" onclick={otpRecoverSend}
+															>Send Code</Button
+														>
+													{:else}
+														<Button class="w-full" variant="ghost" onclick={otpRecoverSend}
+															>Send Code Again</Button
+														>
+													{/if}
+												</div>
+											</div>
+										{:else if passwordResetState === 'reset'}
+											<div class="flex flex-col gap-6">
+												<div class="grid gap-2">
+													<div class="grid gap-2">
+														<Label>Password</Label>
+														<Input
+															bind:value={passwordResetForm.password}
+															oninput={validatePasswordReset}
+															type="password"
+														/>
+														{#if passwordResetError?.fieldErrors?.password && passwordResetForm.password.length > 0}
+															<Label class="text-red-500">
+																{passwordResetError.fieldErrors.password[0]}
+															</Label>
+														{/if}
+													</div>
+
+													<div class="grid gap-2">
+														<Label>Confirm Password</Label>
+														<Input
+															bind:value={passwordResetForm.confirmPassword}
+															oninput={validatePasswordReset}
+															type="password"
+														/>
+														{#if passwordResetError?.fieldErrors?.confirmPassword && passwordResetForm.confirmPassword.length > 0}
+															<Label class="text-red-500">
+																{passwordResetError.fieldErrors.confirmPassword[0]}
+															</Label>
+														{/if}
+													</div>
+												</div>
+											</div>
+										{/if}
+									</Dialog.Description>
+								</Dialog.Header>
+								<Dialog.Footer class="sm:justify-start">
+									<Dialog.Close class={buttonVariants({ variant: 'secondary' })}>Close</Dialog.Close
+									>
+									{#if passwordResetState === 'otp'}
+										<Button variant="outline" class="ml-auto" onclick={otpRecoverHandle}
+											>Verify Code</Button
+										>
+									{:else if passwordResetState === 'reset'}
+										<Button variant="outline" class="ml-auto" onclick={passwordReset}
+											>Reset Password</Button
+										>
+									{/if}
+								</Dialog.Footer>
+							</Dialog.Content>
+						</Dialog.Root>
+					</div>
+				</div>
+				<Input
+					class="mt-1.5"
+					bind:value={accountForm.password}
+					type="password"
+					oninput={() => validateAccount('password')}
+				/>
+				<div class="relative mt-1.5">
+					{#if accountError?.fieldErrors?.password && accountForm?.password?.length > 0}
+						<div transition:fly={flyDown}>
+							<Label class="absolute text-red-500">
+								{accountError?.fieldErrors?.password}
+							</Label>
+						</div>
+					{/if}
+				</div>
+
+				{#if accountForm.password?.length > 0}
+					<div class="flex flex-col gap-0" transition:fly={flyDown}>
+						<Label class="mt-7">Confirm Password</Label>
+						<Input
+							class="mt-2"
+							bind:value={accountExtra.confirmPassword}
+							type="password"
+							oninput={() => validateAccount('password')}
+						/>
+
+						<div class="relative mt-1.5">
+							{#if accountExtraError.confirmPassword && accountExtra.confirmPassword.length > 0}
+								<div transition:fly={flyDown}>
+									<Label class="absolute text-red-500">
+										{accountExtraError.confirmPassword}
+									</Label>
+								</div>
+							{/if}
+						</div>
+
+						<Label class="mt-7">Current Password</Label>
+						<Input
+							class="mt-2"
+							bind:value={accountExtra.currentPassword}
+							type="password"
+							oninput={() => validateAccount('password')}
+						/>
+						<div class="relative mt-2">
+							{#if accountExtraError.currentPassword && accountExtra.currentPassword.length > 0}
+								<div transition:fly={flyDown}>
+									<Label class="absolute text-red-500">
+										{accountExtraError.currentPassword}
+									</Label>
+								</div>
+							{/if}
+						</div>
+					</div>
+				{/if}
+
+				<Button
+					variant="outline"
+					class="mt-6 w-full"
+					onclick={saveAccountChanges}
+					disabled={!Object.values(accountChanges).some((value) => value === true)}>Save</Button
+				>
+			</div>
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="my-4 w-full max-w-xl">
+		<Card.Content class="flex flex-col gap-4">
+			<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="linked-accounts">
+				Linked Accounts
+			</h3>
+			<Separator class="mt-0 mb-4" />
+
+			<div class="flex flex-col gap-4">
+				<Item.Root variant="outline">
+					<Item.Content>
+						<Item.Title>Google</Item.Title>
+						<Item.Description>Used for sign-in.</Item.Description>
+					</Item.Content>
+					<Item.Actions>
+						{#if linkedAccounts?.some((account) => account.providerId === 'google')}
+							<Button variant="outline" size="sm" onclick={() => disconnectProvider('google')}
+								>Unlink</Button
+							>
+						{:else}
+							<Button variant="outline" size="sm" onclick={() => connectProvider('google')}
+								>Link</Button
+							>
+						{/if}
+					</Item.Actions>
+				</Item.Root>
+
+				<Item.Root variant="outline">
+					<Item.Content>
+						<Item.Title>Google</Item.Title>
+						<Item.Description>Used for sign-in.</Item.Description>
+					</Item.Content>
+					<Item.Actions>
+						{#if linkedAccounts?.some((account) => account.providerId === 'google')}
+							<Button variant="outline" size="sm" onclick={() => disconnectProvider('google')}
+								>Unlink</Button
+							>
+						{:else}
+							<Button variant="outline" size="sm" onclick={() => connectProvider('google')}
+								>Link</Button
+							>
+						{/if}
+					</Item.Actions>
+				</Item.Root>
+			</div>
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="my-4 w-full max-w-xl">
+		<Card.Content class="flex flex-col gap-4">
+			<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="billing">Billing</h3>
+			<Separator class="mt-0 mb-4" />
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="my-4 w-full max-w-xl">
+		<Card.Content class="flex flex-col gap-4">
+			<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="notifications">
+				Notifications
+			</h3>
+			<Separator class="mt-0 mb-4" />
+
+			<div class="flex flex-col gap-2">
+				<Item.Root variant="ghost">
+					<Item.Content>
+						<Item.Title>Marketing Emails</Item.Title>
+						<Item.Description>We promise not to spam!</Item.Description>
+					</Item.Content>
+					<Item.Actions>
+						<Checkbox checked class="h-6 w-6" />
+					</Item.Actions>
+				</Item.Root>
+
+				<Item.Root variant="ghost">
+					<Item.Content>
+						<Item.Title>Billing Updates</Item.Title>
+						<Item.Description>Get notified about billing-related changes.</Item.Description>
+					</Item.Content>
+					<Item.Actions>
+						<Checkbox checked class="h-6 w-6" />
+					</Item.Actions>
+				</Item.Root>
+
+				<Item.Root variant="ghost">
+					<Item.Content>
+						<Item.Title>Workspace Events</Item.Title>
+						<Item.Description>Get notified about workspace-related events.</Item.Description>
+					</Item.Content>
+					<Item.Actions>
+						<Checkbox checked class="h-6 w-6" />
+					</Item.Actions>
+				</Item.Root>
+			</div>
+			<Button variant="outline" class="">Save</Button>
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="my-4 w-full max-w-xl">
+		<Card.Content class="flex flex-col gap-4">
+			<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="danger-zone">
+				Danger Zone
+			</h3>
+			<Separator class="mt-0 mb-4" />
+
+			<Dialog.Root>
+				<Dialog.Trigger>
+					<Button variant="destructive" class="w-full" size="sm">Delete Account</Button>
 				</Dialog.Trigger>
 				<Dialog.Content>
 					<Dialog.Header>
-						<Dialog.Title>Upload Profile Picture</Dialog.Title>
+						<Dialog.Title>Are you sure absolutely sure?</Dialog.Title>
 						<Dialog.Description>
-							<div bind:this={wrapperEl} class="w-full">
-								<div bind:this={croppieEl}></div>
+							<div class="grid gap-4">
+								<span>
+									Deleting your account is irreversible. All of your data will be permanently
+									removed. Please type in your password to confirm that you want to proceed.
+								</span>
+
+								<div class="flex items-center">
+									<Label>Password</Label>
+								</div>
+								<Input bind:value={deletionForm.password} type="password" />
+								<Label class="text-red-500">
+									{deletionError}
+								</Label>
 							</div>
 						</Dialog.Description>
 					</Dialog.Header>
 					<Dialog.Footer class="sm:justify-start">
-						<Dialog.Close class={buttonVariants({ variant: 'ghost' })}>Cancel</Dialog.Close>
-						<Button class="ml-auto" onclick={() => fileInputEl.click()}>Select Picture</Button>
-						<Button variant="secondary" disabled={!file} onclick={uploadProfilePicture}
-							>Continue</Button
-						>
+						<Dialog.Close class={buttonVariants({ variant: 'secondary' })}>Close</Dialog.Close>
+						<Button variant="destructive" onclick={deleteAccount}>Delete Account</Button>
 					</Dialog.Footer>
 				</Dialog.Content>
 			</Dialog.Root>
-		</div>
-
-		<Label>Name</Label>
-		<Input bind:value={accountForm.name} oninput={() => validateAccount('name')} type="text" />
-		{#if accountError?.fieldErrors?.name && accountForm.name.length > 0}
-			<Label class="text-red-500">
-				{accountError?.fieldErrors?.name}
-			</Label>
-		{/if}
-
-		<Label>Email</Label>
-		<Input bind:value={accountForm.email} oninput={() => validateAccount('email')} type="email" />
-		{#if accountError?.fieldErrors?.email && accountForm.email.length > 0}
-			<Label class="text-red-500">
-				{accountError?.fieldErrors?.email}
-			</Label>
-		{/if}
-
-		<Label>Set New Password</Label>
-		<Input
-			bind:value={accountForm.password}
-			type="password"
-			oninput={() => validateAccount('password')}
-		/>
-		<Dialog.Root bind:open={passwordResetOpen}>
-			<Dialog.Trigger>
-				<Button variant="ghost" size="sm">Forgot password?</Button>
-			</Dialog.Trigger>
-			<Dialog.Content>
-				<Dialog.Header>
-					<Dialog.Title>Reset Password</Dialog.Title>
-					<Dialog.Description>
-						{#if passwordResetState === 'otp'}
-							<div class="flex flex-col items-center gap-6">
-								<div class="grid justify-items-center gap-2">
-									<InputOTP.Root maxlength={6} bind:value={otpPasswordResetCode}>
-										{#snippet children({ cells })}
-											<InputOTP.Group>
-												{#each cells.slice(0, 3) as cell}
-													<InputOTP.Slot {cell} />
-												{/each}
-											</InputOTP.Group>
-											<InputOTP.Separator />
-											<InputOTP.Group>
-												{#each cells.slice(3, 6) as cell}
-													<InputOTP.Slot {cell} />
-												{/each}
-											</InputOTP.Group>
-										{/snippet}
-									</InputOTP.Root>
-
-									{#if otpError.message?.length > 0}
-										<Label class="text-red-500">
-											{otpError.message}
-										</Label>
-									{/if}
-
-									{#if !otpSent}
-										<Button class="w-full" variant="ghost" onclick={otpRecoverSend}
-											>Send Code</Button
-										>
-									{:else}
-										<Button class="w-full" variant="ghost" onclick={otpRecoverSend}
-											>Send Code Again</Button
-										>
-									{/if}
-								</div>
-							</div>
-						{:else if passwordResetState === 'reset'}
-							<div class="flex flex-col gap-6">
-								<div class="grid gap-2">
-									<div class="grid gap-2">
-										<Label>Password</Label>
-										<Input
-											bind:value={passwordResetForm.password}
-											oninput={validatePasswordReset}
-											type="password"
-										/>
-										{#if passwordResetError?.fieldErrors?.password && passwordResetForm.password.length > 0}
-											<Label class="text-red-500">
-												{passwordResetError.fieldErrors.password[0]}
-											</Label>
-										{/if}
-									</div>
-
-									<div class="grid gap-2">
-										<Label>Confirm Password</Label>
-										<Input
-											bind:value={passwordResetForm.confirmPassword}
-											oninput={validatePasswordReset}
-											type="password"
-										/>
-										{#if passwordResetError?.fieldErrors?.confirmPassword && passwordResetForm.confirmPassword.length > 0}
-											<Label class="text-red-500">
-												{passwordResetError.fieldErrors.confirmPassword[0]}
-											</Label>
-										{/if}
-									</div>
-								</div>
-							</div>
-						{/if}
-					</Dialog.Description>
-				</Dialog.Header>
-				<Dialog.Footer class="sm:justify-start">
-					<Dialog.Close class={buttonVariants({ variant: 'secondary' })}>Close</Dialog.Close>
-					{#if passwordResetState === 'otp'}
-						<Button variant="outline" class="ml-auto" onclick={otpRecoverHandle}>Verify Code</Button
-						>
-					{:else if passwordResetState === 'reset'}
-						<Button variant="outline" class="ml-auto" onclick={passwordReset}>Reset Password</Button
-						>
-					{/if}
-				</Dialog.Footer>
-			</Dialog.Content>
-		</Dialog.Root>
-		{#if accountError?.fieldErrors?.password && accountForm?.password?.length > 0}
-			<div
-				transition:fly={{
-					y: -20,
-					duration: 400,
-					opacity: 0
-				}}
-			>
-				<Label class="text-red-500">
-					{accountError?.fieldErrors?.password}
-				</Label>
-			</div>
-		{/if}
-
-		{#if accountForm.password?.length > 0}
-			<div
-				class="flex flex-col gap-2"
-				transition:fly={{
-					y: -20,
-					duration: 400,
-					opacity: 0
-				}}
-			>
-				<Label>Confirm Password</Label>
-				<Input
-					bind:value={accountExtra.confirmPassword}
-					type="password"
-					oninput={() => validateAccount('password')}
-				/>
-				{#if accountExtraError.confirmPassword && accountExtra.confirmPassword.length > 0}
-					<Label class="text-red-500">
-						{accountExtraError.confirmPassword}
-					</Label>
-				{/if}
-
-				<Label>Current Password</Label>
-				<Input
-					bind:value={accountExtra.currentPassword}
-					type="password"
-					oninput={() => validateAccount('password')}
-				/>
-				{#if accountExtraError.currentPassword && accountExtra.currentPassword.length > 0}
-					<Label class="text-red-500">
-						{accountExtraError.currentPassword}
-					</Label>
-				{/if}
-			</div>
-		{/if}
-	</div>
-
-	<Button
-		variant="outline"
-		class="ml-auto"
-		onclick={saveAccountChanges}
-		disabled={!Object.values(accountChanges).some((value) => value === true)}>Save</Button
-	>
-
-	<div class="w-full">
-		<Separator class="my-4" />
-		<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="linked-accounts">
-			Linked Accounts
-		</h3>
-		<ul class="w-full">
-			<li class="flex items-center justify-between rounded-md border p-4">
-				<div class="flex items-center gap-4">
-					<span class="font-medium">Google</span>
-				</div>
-				{#if linkedAccounts?.some((account) => account.providerId === 'google')}
-					<Button variant="outline" size="sm" onclick={() => disconnectProvider('google')}
-						>Unlink</Button
-					>
-				{:else}
-					<Button variant="outline" size="sm" onclick={() => connectProvider('google')}>Link</Button
-					>
-				{/if}
-			</li>
-		</ul>
-	</div>
-
-	<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="billing">Billing</h3>
-
-	<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="notifications">
-		Notifications
-	</h3>
-	<div class="flex items-start gap-3">
-		<Checkbox id="terms-2" checked />
-		<div class="grid gap-2">
-			<Label for="terms-2">Accept terms and conditions</Label>
-			<p class="text-sm text-muted-foreground">
-				By clicking this checkbox, you agree to the terms and conditions.
-			</p>
-		</div>
-	</div>
-
-	<Button variant="outline" class="ml-auto">Save</Button>
-
-	<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="danger-zone">Danger Zone</h3>
-	<Dialog.Root>
-		<Dialog.Trigger>
-			<Button variant="destructive" size="sm">Delete Account</Button>
-		</Dialog.Trigger>
-		<Dialog.Content>
-			<Dialog.Header>
-				<Dialog.Title>Are you sure absolutely sure?</Dialog.Title>
-				<Dialog.Description>
-					<div class="grid gap-4">
-						<span>
-							Deleting your account is irreversible. All of your data will be permanently removed.
-							Please type in your password to confirm that you want to proceed.
-						</span>
-
-						<div class="flex items-center">
-							<Label>Password</Label>
-						</div>
-						<Input bind:value={deletionForm.password} type="password" />
-						<Label class="text-red-500">
-							{deletionError}
-						</Label>
-					</div>
-				</Dialog.Description>
-			</Dialog.Header>
-			<Dialog.Footer class="sm:justify-start">
-				<Dialog.Close class={buttonVariants({ variant: 'secondary' })}>Close</Dialog.Close>
-				<Button variant="destructive" onclick={deleteAccount}>Delete Account</Button>
-			</Dialog.Footer>
-		</Dialog.Content>
-	</Dialog.Root>
+		</Card.Content>
+	</Card.Root>
 </main>
