@@ -2,6 +2,7 @@
 	import * as Empty from '$lib/components/ui/empty/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import ArrowUpRightIcon from '@lucide/svelte/icons/arrow-up-right';
+	import AddWorkspace from './AddWorkspace.svelte';
 </script>
 
 <Empty.Root>
@@ -13,9 +14,14 @@
 		</Empty.Description>
 	</Empty.Header>
 	<Empty.Content>
-		<div class="gap-2 flex">
+		<div class="flex gap-2">
 			<Button>Create Project</Button>
 			<Button variant="outline">Import Project</Button>
+			<AddWorkspace>
+				{#snippet trigger()}
+					<Button variant="outline">Add Workspace</Button>
+				{/snippet}
+			</AddWorkspace>
 		</div>
 	</Empty.Content>
 	<Button variant="link" class="text-muted-foreground" size="sm">

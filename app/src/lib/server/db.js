@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import * as schema from '$schema';
+import * as schema from '../../../schemas/index.js'; // can't use $schema her because npm run auth:generate uses raw node, which doesn't understand path aliases
 import { env } from '$env/dynamic/private';
 
 if (!env.DATABASE_URL) {

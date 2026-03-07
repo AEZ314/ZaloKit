@@ -1,3 +1,8 @@
+import { logger } from '$lib/server/logger';
+import { db } from '$lib/server/db';
+import { user, appUser } from '$schema';
+import { eq } from 'drizzle-orm';
+
 import { betterAuth } from 'better-auth';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
@@ -5,14 +10,14 @@ import { emailOTP, organization, phoneNumber, admin, apiKey, openAPI } from 'bet
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { passkey } from '@better-auth/passkey';
 import { stripe } from '@better-auth/stripe';
+import { dash } from '@better-auth/infra';
 import Stripe from 'stripe';
+
+import { PUBLIC_BASE_URL } from '$env/dynamic/public';
 import { getRequestEvent } from '$app/server';
 import { twilioClient } from '$lib/server/twilio';
-import { PUBLIC_BASE_URL } from '$env/dynamic/public';
-import { db } from '$lib/server/db';
-import { userCreated } from './app/user-lifecycle';
 import { firstName } from '$lib/utils.js';
-import { dash } from '@better-auth/infra';
+import { userCreated } from './auth-lifecycle';
 
 // When running npm run auth:generate. .svelte import (in mail.js) breaks better-auth codegen otherwise.
 let sendVerificationEmail;
@@ -29,22 +34,21 @@ export const auth = betterAuth({
 	database: drizzleAdapter(db, {
 		provider: 'pg'
 	}),
-	// logger: {
-	// 	disabled: false,
-	// 	disableColors: false,
-	// 	level: 'warn',
-	// 	log: (level, message, ...args) => {
-	// 		// Custom logging implementation
-	// 		console.log(`[${level}] ${message}`, ...args);
-	// 	}
-	// },
-	// onAPIError: {
-	// 	throw: true,
-	// 	onError: (error, ctx) => {
-	// 		// Custom error handling
-	// 		console.error("Auth error:", error);
-	// 	},
-	// },
+	logger: {
+		disabled: false,
+		disableColors: false,
+		level: process.env.ENV === 'dev' ? 'info' : 'warn',
+		log: (level, message, ...args) => {
+			// Custom logging implementation
+			logger[level](...args, message);
+		}
+	},
+	onAPIError: {
+		throw: true,
+		onError: (error, ctx) => {
+			// Custom error handling
+		}
+	},
 	rateLimit: {
 		enabled: true,
 		window: 60, // time window in seconds
@@ -74,14 +78,14 @@ export const auth = betterAuth({
 		requireEmailVerification: true
 	},
 	user: {
+		additionalFields: {
+			// myField: {
+			// 	type: 'string',
+			// 	required: false
+			// }
+		},
 		deleteUser: {
-			enabled: true,
-			beforeDelete: async (user) => {
-				// Perform actions before user deletion
-			},
-			afterDelete: async (user) => {
-				// Perform cleanup after user deletion
-			}
+			enabled: true
 		},
 		changeEmail: {
 			enabled: true
@@ -96,43 +100,55 @@ export const auth = betterAuth({
 			scope: ['email', 'profile']
 		}
 	},
-	hooks: {
-		// after: createAuthMiddleware(async (ctx) => {
-		// 	if (ctx.path.startsWith('/sign-up')) {
-		// 		const newSession = ctx.context.newSession;
-		// 		if (newSession) {
-		// 			// also send notification to admin on new sign up?
-		// 			userCreated(newSession.user);
-		// 		}
-		// 	}
-		// })
-	},
 	databaseHooks: {
 		user: {
 			create: {
 				// Runs once when a new user is inserted
 				async after(user, ctx) {
-					await auth.api.createOrganization({
+					const organization = await auth.api.createOrganization({
 						body: {
 							name: `${firstName(user.name)}'s Workspace`,
 							slug: `${user.id}`, // to avoid collisions
 							metadata: {},
 							userId: user.id,
-							keepCurrentActiveOrganization: false
+							keepCurrentActiveOrganization: false // auto switch to the new org
 						}
 					});
+
+					await db
+						.insert(appUser)
+						.values({ userId: user.id, lastOrgId: organization.id })
+						.onConflictDoNothing();
 				}
 			}
 		},
 		session: {
 			create: {
-				before: async (session) => {
+				before: async (session, ctx) => {
+					const res = await db
+						.select({ lastOrgId: appUser.lastOrgId })
+						.from(appUser)
+						.where(eq(appUser.userId, session.userId))
+						.limit(1);
+
 					return {
 						data: {
 							...session,
-							activeOrganizationId: organization?.id
+							activeOrganizationId: res[0].lastOrgId // set the session's active org to the user's last active org (if any) upon login
 						}
 					};
+				}
+			},
+			update: {
+				after: async (session, ctx) => {
+					if (session.activeOrganizationId) {
+						await db
+							.update(appUser)
+							.set({
+								lastOrgId: session.activeOrganizationId
+							})
+							.where(eq(appUser.userId, session.userId));
+					}
 				}
 			}
 		}
@@ -185,20 +201,8 @@ export const auth = betterAuth({
 		organization({
 			schema: {
 				organization: {
-					additionalFields: {
-						// Add custom fields to the organization schema
-						// todo: this schema design is prone to corruption (ie, multiple primary/personal orgs. Also, not sure if the before/after hooks are in the same DB transaction with the creation logic). So instead, let's add a record to the user table that points to the primary/personal org.
-						primary: {
-							type: 'boolean',
-							input: true,
-							required: false
-						},
-						personal: {
-							type: 'boolean',
-							input: false,
-							required: false
-						}
-					}
+					// Add custom fields to the organization schema
+					additionalFields: {}
 				}
 			},
 			requireEmailVerificationOnInvitation: true,
@@ -236,7 +240,7 @@ export const auth = betterAuth({
 				}
 			},
 			organizationHooks: {
-				// Organization creation hooks
+				// Organization operations
 				beforeCreateOrganization: async ({ organization, user }) => {
 					// Run custom logic before organization is created
 					// Optionally modify the organization data
@@ -254,7 +258,6 @@ export const auth = betterAuth({
 					// e.g., create default resources, send notifications
 					// await setupDefaultResources(organization.id);
 				},
-				// Organization update hooks
 				beforeUpdateOrganization: async ({ organization, user, member }) => {
 					// Validate updates, apply business rules
 					// return {
@@ -268,7 +271,8 @@ export const auth = betterAuth({
 					// Sync changes to external systems
 					// await syncOrganizationToExternalSystems(organization);
 				},
-				// Before a member is added to an organization
+
+				// Member operations
 				beforeAddMember: async ({ member, user, organization }) => {
 					// // Custom validation or modification
 					// console.log(`Adding ${user.email} to ${organization.name}`);
@@ -280,21 +284,17 @@ export const auth = betterAuth({
 					// 	}
 					// };
 				},
-				// After a member is added
 				afterAddMember: async ({ member, user, organization }) => {
 					// Send welcome email, create default resources, etc.
 					// await sendWelcomeEmail(user.email, organization.name);
 				},
-				// Before a member is removed
 				beforeRemoveMember: async ({ member, user, organization }) => {
 					// Cleanup user's resources, send notification, etc.
 					// await cleanupUserResources(user.id, organization.id);
 				},
-				// After a member is removed
 				afterRemoveMember: async ({ member, user, organization }) => {
 					// await logMemberRemoval(user.id, organization.id);
 				},
-				// Before updating a member's role
 				beforeUpdateMemberRole: async ({ member, newRole, user, organization }) => {
 					// Validate role change permissions
 					// if (newRole === 'owner' && !hasOwnerUpgradePermission(user)) {
@@ -307,11 +307,11 @@ export const auth = betterAuth({
 					// 	}
 					// };
 				},
-				// After updating a member's role
 				afterUpdateMemberRole: async ({ member, previousRole, user, organization }) => {
 					// await logRoleChange(user.id, previousRole, member.role);
 				},
-				// Before creating an invitation
+
+				// Invitation operations
 				beforeCreateInvitation: async ({ invitation, inviter, organization }) => {
 					// Custom validation or expiration logic
 					const customExpiration = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 days
@@ -322,36 +322,32 @@ export const auth = betterAuth({
 						}
 					};
 				},
-				// After creating an invitation
 				afterCreateInvitation: async ({ invitation, inviter, organization }) => {
 					// Send custom invitation email, track metrics, etc.
 					// await sendCustomInvitationEmail(invitation, organization);
 				},
-				// Before accepting an invitation
 				beforeAcceptInvitation: async ({ invitation, user, organization }) => {
 					// Additional validation before acceptance
 					// await validateUserEligibility(user, organization);
 				},
-				// After accepting an invitation
 				afterAcceptInvitation: async ({ invitation, member, user, organization }) => {
 					// Setup user account, assign default resources
 					// await setupNewMemberResources(user, organization);
 				},
-				// Before/after rejecting invitations
 				beforeRejectInvitation: async ({ invitation, user, organization }) => {
 					// Log rejection reason, send notification to inviter
 				},
 				afterRejectInvitation: async ({ invitation, user, organization }) => {
 					// await notifyInviterOfRejection(invitation.inviterId, user.email);
 				},
-				// Before/after cancelling invitations
 				beforeCancelInvitation: async ({ invitation, cancelledBy, organization }) => {
 					// Verify cancellation permissions
 				},
 				afterCancelInvitation: async ({ invitation, cancelledBy, organization }) => {
 					// await logInvitationCancellation(invitation.id, cancelledBy.id);
 				},
-				// Before creating a team
+
+				// Team operations
 				beforeCreateTeam: async ({ team, user, organization }) => {
 					// Validate team name, apply naming conventions
 					return {
@@ -361,12 +357,10 @@ export const auth = betterAuth({
 						}
 					};
 				},
-				// After creating a team
 				afterCreateTeam: async ({ team, user, organization }) => {
 					// Create default team resources, channels, etc.
 					// await createDefaultTeamResources(team.id);
 				},
-				// Before updating a team
 				beforeUpdateTeam: async ({ team, updates, user, organization }) => {
 					// Validate updates, apply business rules
 					return {
@@ -376,19 +370,17 @@ export const auth = betterAuth({
 						}
 					};
 				},
-				// After updating a team
 				afterUpdateTeam: async ({ team, user, organization }) => {
 					// await syncTeamChangesToExternalSystems(team);
 				},
-				// Before deleting a team
 				beforeDeleteTeam: async ({ team, user, organization }) => {
 					// Backup team data, notify members
 					// await backupTeamData(team.id);
 				},
-				// After deleting a team
 				afterDeleteTeam: async ({ team, user, organization }) => {
 					// await cleanupTeamResources(team.id);
 				},
+
 				// Team member operations
 				beforeAddTeamMember: async ({ teamMember, team, user, organization }) => {
 					// Validate team membership limits, permissions
