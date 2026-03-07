@@ -15,9 +15,8 @@
 	import CirclePlus from '@lucide/svelte/icons/circle-plus';
 	import { fly } from 'svelte/transition';
 
-	import 'croppie/croppie.css';
-	import Croppie from 'croppie';
 	import imageCompression from 'browser-image-compression';
+	import AvatarSelector from '../AvatarSelector.svelte';
 
 	import { getInitials } from '$lib/utils.js';
 	import { goto, invalidate } from '$app/navigation';
@@ -52,53 +51,8 @@
 
 	// profile picture logic //
 
-	let profilePicDialogOpen = $state(false);
-	$effect(() => {
-		if (!profilePicDialogOpen) {
-			// destroy croppie instance when dialog is closed
-			if (croppie) {
-				croppie.destroy();
-				croppie = null;
-			}
-			file = null;
-		}
-	});
-	let fileInputEl;
-	let file = $state(null);
-	let croppie;
-	let croppieEl;
-	let wrapperEl;
-	let aspectRatio = 1;
 	let maxSizeMB = env.PUBLIC_MAX_AVATAR_SIZE_MB;
 	let uploading = false;
-
-	async function onProfilePictureChange(e) {
-		const input = e.currentTarget;
-		file = input.files?.[0] ?? file;
-
-		initCroppie();
-	}
-
-	async function initCroppie() {
-		if (croppie) return; // already initialized
-
-		const width = wrapperEl.clientWidth;
-		const height = width / aspectRatio;
-
-		croppie = new Croppie(croppieEl, {
-			viewport: {
-				width: width * 0.8,
-				height: (width * 0.8) / aspectRatio,
-				type: aspectRatio === 1 ? 'square' : 'square'
-			},
-			boundary: {
-				width,
-				height
-			}
-		});
-
-		await croppie.bind({ url: URL.createObjectURL(file) });
-	}
 
 	async function compressImage(file) {
 		const options = {
@@ -110,8 +64,7 @@
 		return compressedBlob;
 	}
 
-	async function uploadProfilePicture(e) {
-		if (!croppie || !file) return;
+	async function uploadProfilePicture(croppie) {
 		if (uploading) {
 			toast('Uploading profile picture...', { duration: 2000 });
 			return;
@@ -234,6 +187,8 @@
 				toast.success('Password updated successfully');
 			}
 		}
+
+		await invalidate('app:auth');
 	}
 
 	let passwordResetOpen = $state(false);
@@ -355,25 +310,16 @@
 	});
 </script>
 
-<input
-	type="file"
-	id="avatar-selector"
-	accept="image/*"
-	class="hidden"
-	bind:this={fileInputEl}
-	onchange={onProfilePictureChange}
-/>
-
 <main class="container flex flex-col items-center gap-6 p-6">
-	<Card.Root class="my-4 w-full max-w-xl">
+	<Card.Root class="my-4 w-full max-w-3xl">
 		<Card.Content class="flex flex-col gap-3">
 			<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="account">Account</h3>
 			<Separator class="mt-0 mb-4" />
 
 			<div class="flex gap-4">
 				<div class="relative w-fit">
-					<Dialog.Root bind:open={profilePicDialogOpen}>
-						<Dialog.Trigger>
+					<AvatarSelector title="Upload Profile Picture" onSubmit={uploadProfilePicture}>
+						{#snippet trigger()}
 							<Avatar.Root class="size-40 cursor-pointer rounded-lg">
 								{#if user.current.id}
 									<Avatar.Image src={'/s3/user/avatar/' + user.current.id} />
@@ -387,25 +333,8 @@
 							>
 								<CirclePlus class="cursor-pointer shadow" size="16" />
 							</div>
-						</Dialog.Trigger>
-						<Dialog.Content>
-							<Dialog.Header>
-								<Dialog.Title>Upload Profile Picture</Dialog.Title>
-								<Dialog.Description>
-									<div bind:this={wrapperEl} class="w-full">
-										<div bind:this={croppieEl}></div>
-									</div>
-								</Dialog.Description>
-							</Dialog.Header>
-							<Dialog.Footer class="sm:justify-start">
-								<Dialog.Close class={buttonVariants({ variant: 'ghost' })}>Cancel</Dialog.Close>
-								<Button class="ml-auto" onclick={() => fileInputEl.click()}>Select Picture</Button>
-								<Button variant="secondary" disabled={!file} onclick={uploadProfilePicture}
-									>Continue</Button
-								>
-							</Dialog.Footer>
-						</Dialog.Content>
-					</Dialog.Root>
+						{/snippet}
+					</AvatarSelector>
 				</div>
 
 				<div class="flex flex-1 flex-col">
@@ -612,7 +541,7 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root class="my-4 w-full max-w-xl">
+	<Card.Root class="my-4 w-full max-w-3xl">
 		<Card.Content class="flex flex-col gap-4">
 			<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="linked-accounts">
 				Linked Accounts
@@ -659,14 +588,14 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root class="my-4 w-full max-w-xl">
+	<Card.Root class="my-4 w-full max-w-3xl">
 		<Card.Content class="flex flex-col gap-4">
 			<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="billing">Billing</h3>
 			<Separator class="mt-0 mb-4" />
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root class="my-4 w-full max-w-xl">
+	<Card.Root class="my-4 w-full max-w-3xl">
 		<Card.Content class="flex flex-col gap-4">
 			<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="notifications">
 				Notifications
@@ -708,7 +637,7 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root class="my-4 w-full max-w-xl">
+	<Card.Root class="my-4 w-full max-w-3xl">
 		<Card.Content class="flex flex-col gap-4">
 			<h3 class="scroll-m-20 text-2xl font-semibold tracking-tight" id="danger-zone">
 				Danger Zone

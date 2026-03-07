@@ -8,7 +8,12 @@
 	import ThemeInit from '$lib/client/ThemeInit.svelte';
 
 	import { user } from '$lib/client/state.svelte.js';
+
+	// user.current = $page.data.user isn't reactive to invalidate('auth:user') by itself, so we need $effect
 	user.current = $page.data.user;
+	$effect(() => {
+		user.current = $page.data.user;
+	});
 
 	let { children } = $props();
 
